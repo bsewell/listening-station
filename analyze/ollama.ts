@@ -1,6 +1,6 @@
 /**
  * Ollama integration for local LLM processing
- * Uses phi4:14b for briefing generation and technique extraction
+ * Uses Qwen 2.5-coder:32b for briefing generation and technique extraction
  */
 
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";

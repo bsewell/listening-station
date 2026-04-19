@@ -9,20 +9,10 @@
  *   npx tsx scripts/cluster.ts --list                             # List all clusters
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase.js";
 import { generateBriefing as generateBriefingDoc } from "../analyze/briefing.js";
 import { generateQuestions } from "../analyze/questions.js";
 import { indexInLightRAG } from "../analyze/cluster.js";
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
-  process.exit(1);
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 async function listClusters() {
   const { data, error } = await supabase

@@ -3,7 +3,7 @@
  * Supports manual tags + optional LightRAG auto-enrichment
  */
 
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 const LIGHTRAG_URL = process.env.LIGHTRAG_URL || "http://localhost:9621";
 

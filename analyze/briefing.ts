@@ -1,6 +1,6 @@
 /**
  * Briefing Generator — synthesizes multiple sources into a single briefing document
- * Uses Ollama phi4:14b for local generation
+ * Uses Ollama Qwen 2.5-coder:32b for local generation
  */
 
 import { generate, isAvailable } from "./ollama.js";
@@ -84,7 +84,7 @@ Format the entire output as clean markdown.`;
   console.log(
     `Generating briefing for "${topic}" from ${sources.length} sources...`
   );
-  console.log("Using Ollama phi4:14b (this may take 1-3 minutes)...");
+  console.log("Using Ollama Qwen 2.5-coder:32b (this may take 1-3 minutes)...");
 
   const markdown = await generate(prompt, {
     system:

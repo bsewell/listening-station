@@ -11,24 +11,11 @@
  *   npx tsx scripts/ingest.ts https://example.com/article --tag ai-health
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase.js";
 import { detectSourceType } from "../ingest/transcript-finder.js";
 import { ingestYouTube } from "../ingest/youtube.js";
 import { indexInLightRAG } from "../analyze/cluster.js";
 import { ingestArticle } from "../ingest/article.js";
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error(
-    "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables"
-  );
-  console.error("Set them in .env or export them before running");
-  process.exit(1);
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 async function main() {
   const args = process.argv.slice(2);

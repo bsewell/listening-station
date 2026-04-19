@@ -7,7 +7,9 @@
  *   npx tsx scripts/publish.ts <episode_id> --preview  # Show content without publishing
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase.js";
+import { distribute, isN8nAvailable } from "../distribute/n8n.js";
+import { generateEpisodePage, generateIndex } from "../distribute/github-pages.js";
 import { writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -15,16 +17,6 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const exec = promisify(execFile);
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
-  process.exit(1);
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const PROJECT_ROOT = join(import.meta.dirname, "..");
 const CONTENT_DIR = join(PROJECT_ROOT, "content", "episodes");
 
@@ -166,7 +158,66 @@ async function main() {
 
   console.log(`\nPublished! Episode ${episode.episode_number}: "${episode.title}"`);
   console.log(`  Content: ${episodeDir}`);
-  console.log(`\nTODO: Set up n8n webhooks for social distribution`);
+
+  // Generate GitHub Pages static HTML
+  console.log("\nGenerating GitHub Pages...");
+  const pagePath = await generateEpisodePage(episode.slug);
+  if (pagePath) console.log(`  Episode page: ${pagePath}`);
+  await generateIndex();
+  console.log("  Index updated");
+
+  // Git add the generated pages too
+  try {
+    const contentRoot = join(PROJECT_ROOT, "content");
+    await exec("git", ["add", contentRoot], { cwd: PROJECT_ROOT });
+    await exec(
+      "git",
+      ["commit", "-m", `pages: generate static HTML for episode ${episode.episode_number}`],
+      { cwd: PROJECT_ROOT }
+    );
+    console.log("  Pages committed");
+  } catch {
+    // No changes or not a git repo
+  }
+
+  // Distribute via n8n webhooks
+  const n8nUp = await isN8nAvailable();
+  if (n8nUp) {
+    console.log("\nDistributing via n8n...");
+    const results = await distribute({
+      episodeId,
+      slug: episode.slug,
+      title: episode.title,
+      episodeNumber: episode.episode_number,
+      blog: episode.blog_md,
+      socialClips: episode.social_clips || [],
+      audioScript: episode.audio_script,
+      sources,
+      publishedAt: now,
+    });
+
+    const distributionRecord: Record<string, unknown> = {
+      github: { committed: true, path: episodeDir, at: now },
+    };
+
+    for (const r of results) {
+      console.log(`  ${r.channel}: ${r.success ? "sent" : `failed — ${r.error}`}`);
+      distributionRecord[r.channel] = {
+        sent: r.success,
+        at: now,
+        ...(r.error && { error: r.error }),
+      };
+    }
+
+    // Update distribution record with n8n results
+    await supabase
+      .from("listening_station_episodes")
+      .update({ distribution: distributionRecord })
+      .eq("id", episodeId);
+  } else {
+    console.log("\nn8n not running — skipping webhook distribution");
+    console.log("Start n8n and re-run to distribute, or distribute manually");
+  }
 }
 
 main().catch((err) => {
