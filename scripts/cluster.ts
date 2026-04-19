@@ -10,6 +10,9 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { generateBriefing as generateBriefingDoc } from "../analyze/briefing.js";
+import { generateQuestions } from "../analyze/questions.js";
+import { indexInLightRAG } from "../analyze/cluster.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -173,38 +176,46 @@ async function generateBriefing(clusterId: string) {
     return;
   }
 
-  console.log(
-    `\nGenerating briefing for "${cluster.topic}" from ${sources.length} sources...`
+  // Map sources to the briefing generator format
+  const sourceSummaries = sources.map((s) => ({
+    id: s.id,
+    title: s.title || "Untitled",
+    author: s.author || "Unknown",
+    url: s.url,
+    transcript: s.transcript || "",
+    sourceType: s.source_type,
+  }));
+
+  // Generate briefing via Ollama
+  const briefing = await generateBriefingDoc(cluster.topic, sourceSummaries);
+
+  // Generate additional interview questions
+  console.log("\nGenerating interview questions...");
+  const questions = await generateQuestions(
+    cluster.topic,
+    briefing.markdown,
+    sources.length
   );
 
-  // Build the briefing prompt for Ollama
-  const sourcesSummary = sources
-    .map(
-      (s, i) =>
-        `--- Source ${i + 1}: "${s.title}" by ${s.author} ---\n${s.transcript?.slice(0, 3000) || "[no transcript]"}\n`
-    )
-    .join("\n");
+  // Merge questions (deduplicate)
+  const allQuestions = [...new Set([...briefing.questions, ...questions])];
 
-  const briefingPrompt = `You are synthesizing multiple sources on the topic "${cluster.topic}" for a content creator building a health technology app.
+  // Save briefing and questions to cluster
+  await supabase
+    .from("listening_station_clusters")
+    .update({
+      briefing: briefing.markdown,
+      interview_questions: allQuestions,
+      status: "briefed",
+    })
+    .eq("id", clusterId);
 
-Sources:
-${sourcesSummary}
-
-Create a briefing document that:
-1. Summarizes what each source covers (2-3 sentences each)
-2. Identifies where they agree
-3. Identifies where they disagree or offer different perspectives
-4. Extracts the 3-5 most important insights with citations
-5. Suggests 5-7 interview questions that would explore these insights
-
-Format as markdown.`;
-
-  console.log("Briefing prompt prepared. Send to Ollama for generation.");
-  console.log(`Prompt length: ${briefingPrompt.length} characters`);
-  console.log(`\nTo generate manually, send this prompt to Ollama phi4:14b`);
-
-  // TODO: Integrate with Ollama MCP for automatic briefing generation
-  // For now, output the prompt so it can be used manually
+  console.log(`\nBriefing generated!`);
+  console.log(`  Topic: ${cluster.topic}`);
+  console.log(`  Sources synthesized: ${briefing.sourceCount}`);
+  console.log(`  Interview questions: ${allQuestions.length}`);
+  console.log(`\nReady for interview generation:`);
+  console.log(`  npx tsx scripts/interview.ts ${clusterId}`);
 }
 
 async function main() {

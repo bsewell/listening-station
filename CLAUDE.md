@@ -13,7 +13,7 @@ Content ingestion and interview-style content marketing pipeline for GIStudio. I
 ## Key Dependencies
 - **Meeting Transcriber MCP**: `/Users/bsewell/000-HOME/05-INFRASTRUCTURE/tools/meeting-mcp/` — Whisper transcription
 - **LightRAG**: Docker container on port 9621 — semantic search and knowledge graph
-- **Ollama**: phi4:14b — local LLM for briefings, technique extraction
+- **Ollama (Qwen)**: qwen2.5-coder:32b — local LLM for briefings, technique extraction
 - **n8n**: Docker container on port 5678 — distribution webhooks
 - **Supabase**: Shared with GIStudio — `listening_station_*` tables
 - **Claude API**: Interview generation via @anthropic-ai/sdk

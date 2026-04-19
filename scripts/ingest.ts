@@ -14,6 +14,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { detectSourceType } from "../ingest/transcript-finder.js";
 import { ingestYouTube } from "../ingest/youtube.js";
+import { indexInLightRAG } from "../analyze/cluster.js";
 import { ingestArticle } from "../ingest/article.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -152,6 +153,18 @@ async function main() {
   console.log(`  ID: ${data.id}`);
   console.log(`  Title: ${title}`);
   console.log(`  Status: ${status}`);
+
+  // Try to index in LightRAG for semantic search
+  if (status === "ready" && transcript) {
+    const docId = await indexInLightRAG(data.id, title || "Untitled", transcript);
+    if (docId) {
+      await supabase
+        .from("listening_station_sources")
+        .update({ lightrag_doc_id: docId })
+        .eq("id", data.id);
+      console.log(`  LightRAG indexed: ${docId}`);
+    }
+  }
 
   if (status === "ready") {
     console.log("\nNext: Add to a topic cluster with:");
