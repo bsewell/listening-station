@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+*.mp3
+*.mp4
+*.m4a
+*.wav
+*.ogg
+*.flac
+audio/
+downloads/
