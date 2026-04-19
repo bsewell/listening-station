@@ -11,6 +11,8 @@ export default async function Dashboard() {
     { count: sourceCount },
     { count: clusterCount },
     { count: episodeCount },
+    { count: insightCount },
+    { count: pendingInsightCount },
     { data: sources },
     { data: episodes },
   ] = await Promise.all([
@@ -23,6 +25,13 @@ export default async function Dashboard() {
     supabase
       .from("listening_station_episodes")
       .select("*", { count: "exact", head: true }),
+    supabase
+      .from("listening_station_insights")
+      .select("*", { count: "exact", head: true }),
+    supabase
+      .from("listening_station_insights")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending"),
     supabase
       .from("listening_station_sources")
       .select("*")
@@ -47,6 +56,12 @@ export default async function Dashboard() {
         </a>
         <a href="/clusters" className="text-muted hover:text-foreground transition-colors">
           <span className="text-foreground font-bold text-lg">{clusterCount ?? 0}</span> clusters
+        </a>
+        <a href="/knowledge" className="text-muted hover:text-foreground transition-colors">
+          <span className="text-foreground font-bold text-lg">{insightCount ?? 0}</span> insights
+          {(pendingInsightCount ?? 0) > 0 && (
+            <span className="text-warning ml-1">({pendingInsightCount} pending)</span>
+          )}
         </a>
         <a href="/episodes" className="text-muted hover:text-foreground transition-colors">
           <span className="text-foreground font-bold text-lg">{episodeCount ?? 0}</span> episodes

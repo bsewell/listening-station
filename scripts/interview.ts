@@ -79,6 +79,33 @@ async function main() {
   console.log(`Generating interview for topic: "${cluster.topic}"`);
   console.log(`Sources: ${sources.length}`);
 
+  // Load curated insights for this cluster's sources
+  const { data: curatedInsights } = await supabase
+    .from("listening_station_insights")
+    .select("*, listening_station_categories(name)")
+    .in("source_id", cluster.source_ids)
+    .in("status", ["accepted", "starred"])
+    .order("status", { ascending: false });
+
+  // Load starred insights from OTHER sources for cross-pollination
+  const { data: starredGlobal } = await supabase
+    .from("listening_station_insights")
+    .select("*, listening_station_sources(title), listening_station_categories(name)")
+    .eq("status", "starred")
+    .not("source_id", "in", `(${cluster.source_ids.join(",")})`)
+    .limit(10);
+
+  const starredInsights = (curatedInsights || []).filter(
+    (i) => i.status === "starred"
+  );
+  const acceptedInsights = (curatedInsights || []).filter(
+    (i) => i.status === "accepted"
+  );
+
+  console.log(
+    `Curated insights: ${starredInsights.length} starred, ${acceptedInsights.length} accepted, ${(starredGlobal || []).length} cross-topic`
+  );
+
   // Load style materials
   const [styleGuide, persona] = await Promise.all([
     loadStyleGuide(),
@@ -94,6 +121,42 @@ URL: ${s.url}
 ${s.transcript?.slice(0, 4000) || "[no transcript available]"}`
     )
     .join("\n\n");
+
+  // Build curated knowledge context
+  let knowledgeContext = "";
+  if (starredInsights.length || acceptedInsights.length || starredGlobal?.length) {
+    knowledgeContext = "\n\n## Curated Knowledge Base\n\nThe following insights have been manually reviewed and accepted as relevant to the GIStudio story. Use these as storytelling anchors — weave them into the interview naturally.\n";
+
+    if (starredInsights.length) {
+      knowledgeContext += "\n### Starred Insights (high priority — these MUST appear)\n";
+      knowledgeContext += starredInsights
+        .map((i) => {
+          const cat = (i.listening_station_categories as { name: string } | null)?.name || "";
+          return `- **${i.topic}**: ${i.insight}${cat ? ` [${cat}]` : ""}`;
+        })
+        .join("\n");
+    }
+
+    if (acceptedInsights.length) {
+      knowledgeContext += "\n\n### Accepted Insights (use where they fit naturally)\n";
+      knowledgeContext += acceptedInsights
+        .map((i) => {
+          const cat = (i.listening_station_categories as { name: string } | null)?.name || "";
+          return `- [${cat}] ${i.insight}`;
+        })
+        .join("\n");
+    }
+
+    if (starredGlobal?.length) {
+      knowledgeContext += "\n\n### Cross-Topic Connections\n";
+      knowledgeContext += starredGlobal
+        .map((i) => {
+          const srcTitle = (i.listening_station_sources as { title: string } | null)?.title || "";
+          return `- ${i.insight} (from "${srcTitle}" — connect if relevant)`;
+        })
+        .join("\n");
+    }
+  }
 
   // Build the briefing context
   const briefingContext = cluster.briefing
@@ -111,6 +174,7 @@ ${styleGuide}`;
   const userPrompt = `Generate a complete interview-style content piece about the topic: "${cluster.topic}"
 
 ${briefingContext}
+${knowledgeContext}
 
 ## Source Material
 ${sourceContext}

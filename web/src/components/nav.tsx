@@ -8,6 +8,7 @@ const links = [
   { href: "/ingest", label: "Ingest" },
   { href: "/sources", label: "Sources" },
   { href: "/clusters", label: "Clusters" },
+  { href: "/knowledge", label: "Knowledge" },
   { href: "/episodes", label: "Episodes" },
 ];
 

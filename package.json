@@ -7,7 +7,8 @@
     "ingest": "tsx scripts/ingest.ts",
     "cluster": "tsx scripts/cluster.ts",
     "interview": "tsx scripts/interview.ts",
-    "publish": "tsx scripts/publish.ts"
+    "publish": "tsx scripts/publish.ts",
+    "extract": "tsx scripts/extract-insights.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

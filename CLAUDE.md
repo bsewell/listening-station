@@ -24,6 +24,9 @@ Uses the existing GIStudio Supabase project. All tables are prefixed `listening_
 - `listening_station_clusters` — topic groups with briefings
 - `listening_station_episodes` — produced content
 - `listening_station_interviewers` — technique profiles
+- `listening_station_categories` — product process taxonomy (user research, feature design, etc.)
+- `listening_station_insights` — extracted actionable insights with accept/reject curation
+- `listening_station_extractions` — idempotency guard for extraction runs
 
 ## How we work
 1. TypeScript project — use `tsx` for running scripts
@@ -34,8 +37,13 @@ Uses the existing GIStudio Supabase project. All tables are prefixed `listening_
 
 ## CLI Commands
 ```bash
-npx tsx scripts/ingest.ts <url>           # Ingest a URL
-npx tsx scripts/cluster.ts <topic>        # Cluster sources by topic
-npx tsx scripts/interview.ts <cluster_id> # Generate interview from cluster
-npx tsx scripts/publish.ts <episode_id>   # Distribute published episode
+npx tsx scripts/ingest.ts <url>              # Ingest a URL
+npx tsx scripts/cluster.ts <topic>           # Cluster sources by topic
+npx tsx scripts/extract-insights.ts          # Extract insights from all ready sources
+npx tsx scripts/extract-insights.ts <id>     # Extract from one source
+npx tsx scripts/interview.ts <cluster_id>    # Generate interview from cluster
+npx tsx scripts/publish.ts <episode_id>      # Distribute published episode
 ```
+
+## Knowledge Base
+The knowledge curation layer extracts actionable insights from source transcripts via Ollama, then lets you accept/reject/star them through the web dashboard at `/knowledge`. Curated insights (accepted + starred) are automatically injected into interview generation as storytelling anchors. Starred insights are high-priority and must appear in the output.
